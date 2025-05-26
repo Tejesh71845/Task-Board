@@ -9,6 +9,7 @@ import {
 } from "@dnd-kit/sortable";
 import { DraggableTask } from "../components/DraggableTask";
 import { useDroppable } from "@dnd-kit/core";
+import { statusIcons } from "../utils/statusIcons";
 
 // Types
 export type Task = {
@@ -17,6 +18,8 @@ export type Task = {
   description: string;
   icon: string;
   status: "In Progress" | "Completed" | "Won't do" | "To Do";
+  dueDate?: string;
+  completion?: number;
 };
 
 export type Board = {
@@ -32,18 +35,22 @@ export type BoardResponse = {
 
 const statuses = ["To Do", "In Progress", "Completed", "Won't do"] as const;
 
+
 const DroppableColumn = ({
   status,
   tasks,
   onDelete,
   onAdd,
+  onEdit
 }: {
   status: Task["status"];
   tasks: Task[];
   onDelete: (id: string) => void;
   onAdd: () => void;
+  onEdit: (task: Task) => void;
 }) => {
   const { setNodeRef } = useDroppable({ id: status });
+  // const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   return (
     <div ref={setNodeRef} className="bg-gray-100 p-4 rounded-md shadow-sm">
@@ -55,7 +62,7 @@ const DroppableColumn = ({
       >
         <div className="space-y-3 min-h-[50px]">
           {tasks.map((task) => (
-            <DraggableTask key={task._id} task={task} onDelete={onDelete} />
+            <DraggableTask key={task._id} task={task} onDelete={onDelete} onEdit={() => onEdit(task)} />
           ))}
         </div>
       </SortableContext>
@@ -75,6 +82,12 @@ export const BoardPage = () => {
   const [boardData, setBoardData] = useState<BoardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModalStatus, setShowModalStatus] = useState<Task["status"] | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setShowModalStatus(task.status); // This opens the modal for the right column
+  };
 
 
   const fetchBoard = async () => {
@@ -136,7 +149,9 @@ export const BoardPage = () => {
             ? {
               ...prev,
               tasks: prev.tasks.map((task) =>
-                task._id === taskId ? { ...task, status: destinationStatus } : task
+                task._id === taskId
+                  ? { ...task, status: destinationStatus, icon: statusIcons[destinationStatus] }
+                  : task
               ),
             }
             : null
@@ -156,6 +171,10 @@ export const BoardPage = () => {
       }
     }
   };
+
+
+
+
 
   if (loading) return <Loader />;
   if (!boardData) return <div className="text-center mt-10">Board not found.</div>;
@@ -178,22 +197,29 @@ export const BoardPage = () => {
               tasks={boardData.tasks.filter((t) => t.status === status)}
               onDelete={handleDelete}
               onAdd={() => setShowModalStatus(status)}
+              onEdit={handleEditTask}
             />
           ))}
         </div>
       </DndContext>
 
-      {showModalStatus && boardId && (
+      {(showModalStatus || editingTask) && boardId && (
         <AddTaskModal
           boardId={boardId}
-          initialStatus={showModalStatus}
+          initialStatus={showModalStatus || undefined}
+          taskToEdit={editingTask}
           onTaskCreated={async () => {
             await fetchBoard();
             setShowModalStatus(null);
+            setEditingTask(null);
           }}
-          onClose={() => setShowModalStatus(null)}
+          onClose={() => {
+            setShowModalStatus(null);
+            setEditingTask(null);
+          }}
         />
       )}
+
 
     </div>
   );

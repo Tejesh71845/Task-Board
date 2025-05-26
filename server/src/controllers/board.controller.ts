@@ -6,18 +6,35 @@ import { Task } from "../models/task.model";
 // Create
 export const createBoard = async (req: Request, res: Response): Promise<void> => {
   try {
-
     const { name, description } = req.body;
-    const board = new Board({
-      name,
-      description,
-    });
+
+    // Prevent duplicate board names
+    const existingBoard = await Board.findOne({ name });
+    if (existingBoard) {
+      res.status(400).json({ message: "Board with this name already exists." });
+      return;
+    }
+
+    const board = new Board({ name, description });
     await board.save();
     res.status(201).json(board);
   } catch (error) {
     res.status(500).json({ message: "Failed to create board", error });
   }
 };
+
+
+// GET /api/boards
+export const getBoards = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const boards = await Board.find().sort({ createdAt: -1 });
+    res.json(boards);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch boards", error });
+  }
+};
+
+
 
 // Get
 export const getBoardById = async (req: Request, res: Response): Promise<void> => {
