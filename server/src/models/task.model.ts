@@ -1,47 +1,36 @@
-import mongoose, { Document, Schema } from "mongoose";
+// models/task.model.ts
+import mongoose, { Document, Schema, Types } from "mongoose";
 
-export interface ISubtask{
-  title:string;
-  done:boolean;
+export interface ISubtask extends Document {
+  title: string;
+  done: boolean;
 }
 
 export interface ITask extends Document {
+  boardId: string;
   name: string;
   description: string;
   icon: string;
-  status: "In Progress" | "Completed" | "Won't do" | "To Do";
-  boardId: mongoose.Types.ObjectId;
-  dueDate?: Date;
-  completion?: number; // ✅ New field
-  subtasks:ISubtask[];
+  dueDate: Date;
+  subtasks: Types.DocumentArray<ISubtask>; // Use DocumentArray for subdocuments
+  status: "To Do" | "In Progress" | "Completed" | "Won't do";
+  completion: number;
 }
 
-const TaskSchema = new Schema<ITask>(
-  {
-    name: { type: String, required: true },
-    description: { type: String, default: "" },
-    icon: { type: String, default: "📘" },
-    status: {
-      type: String,
-      enum: ["In Progress", "Completed", "Won't do", "To Do"],
-      default: "To Do",
-    },
-    boardId: { type: Schema.Types.ObjectId, ref: "Board", required: true },
-    dueDate: { type: Date },
-    completion: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: 0, // ✅ Default to 0%
-    },
-    subtasks: [
-      {
-        title: { type: String, required: true },
-        done: { type: Boolean, default: false },
-      },
-    ],
-  },
-  { timestamps: true }
-);
+const SubtaskSchema = new Schema<ISubtask>({
+  title: { type: String, required: true },
+  done: { type: Boolean, default: false },
+});
+
+const TaskSchema = new Schema<ITask>({
+  boardId: { type: String, required: true },
+  name: { type: String, required: true },
+  description: String,
+  icon: String,
+  dueDate: Date,
+  subtasks: [SubtaskSchema], // ✅ Subdocuments
+  status: { type: String, enum: ["To Do", "In Progress", "Completed", "Won't do"], default: "To Do" },
+  completion: { type: Number, default: 0 },
+});
 
 export const Task = mongoose.model<ITask>("Task", TaskSchema);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { Task } from "../pages/BoardPage";
+import type { Task, Subtask } from "../pages/BoardPage";
 
 type Props = {
   boardId: string;
@@ -29,7 +29,12 @@ export const AddTaskModal = ({
   const [icon, setIcon] = useState(taskToEdit?.icon ?? statusIcons[initialStatus]);
   const [dueDate, setDueDate] = useState(
     taskToEdit?.dueDate ? new Date(taskToEdit.dueDate).toISOString().split("T")[0] : ""
-  ); // Format to yyyy-mm-dd
+  );
+
+  // 🔹 Subtasks state
+  const [subtasks, setSubtasks] = useState<{ id: string; title: string }[]>(
+    taskToEdit?.subtasks?.map((st) => ({ id: st._id || crypto.randomUUID(), title: st.title })) ?? []
+  );
 
   useEffect(() => {
     if (!taskToEdit) {
@@ -45,6 +50,10 @@ export const AddTaskModal = ({
         status,
         icon: statusIcons[status] || icon,
         dueDate: dueDate ? new Date(dueDate) : undefined,
+        subtasks: subtasks.map((st) => ({
+          title: st.title,
+          isCompleted: false, // new subtasks start incomplete
+        })),
       };
 
       const res = await fetch(
@@ -107,7 +116,7 @@ export const AddTaskModal = ({
           <option>Won't do</option>
         </select>
 
-        {/* ✅ Deadline input */}
+        {/* 🔹 Due Date */}
         <label className="block mb-1 text-sm font-medium text-gray-700">Due Date</label>
         <input
           type="date"
@@ -115,6 +124,49 @@ export const AddTaskModal = ({
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
         />
+
+        {/* 🔹 Subtasks */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-sm font-medium text-gray-700">Subtasks</label>
+            <button
+              type="button"
+              onClick={() =>
+                setSubtasks([...subtasks, { id: crypto.randomUUID(), title: "" }])
+              }
+              className="text-xs text-blue-500 hover:underline"
+            >
+              + Add Subtask
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {subtasks.map((subtask, index) => (
+              <div key={subtask.id} className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  placeholder={`Subtask ${index + 1}`}
+                  value={subtask.title}
+                  onChange={(e) => {
+                    const updated = [...subtasks];
+                    updated[index].title = e.target.value;
+                    setSubtasks(updated);
+                  }}
+                  className="w-full px-2 py-1 border rounded text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSubtasks(subtasks.filter((_, i) => i !== index))
+                  }
+                  className="text-red-500 text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-3 py-1 bg-gray-300 rounded">
